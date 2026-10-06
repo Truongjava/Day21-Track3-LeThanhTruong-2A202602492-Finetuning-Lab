@@ -21,10 +21,15 @@ BOOTSTRAP = """# @title Setup (chạy ô này trước)
 # Colab bắt đầu với một máy trống — clone repo và cài dependency.
 import os, subprocess, sys
 
-REPO = "https://github.com/hieutrungdao/Day21-Track3-Finetuning-Lab.git"
-if not os.path.exists("Day21-Track3-Finetuning-Lab"):
+# Point this at YOUR OWN fork: the notebook runs on the code you pushed, so a change
+# you make locally (e.g. a stronger OPTIMIZED_PROMPT) actually reaches Colab. The
+# directory name is derived from the URL — writing it twice is how a rename silently
+# strands the notebook.
+REPO = "https://github.com/Truongjava/Day21-Track3-LeThanhTruong-2A202602492-Finetuning-Lab.git"
+DIR = REPO.rsplit("/", 1)[-1].removesuffix(".git")
+if not os.path.exists(DIR):
     subprocess.run(["git", "clone", "-q", REPO], check=True)
-os.chdir("Day21-Track3-Finetuning-Lab")
+os.chdir(DIR)
 sys.path.insert(0, "src")
 
 # Install from requirements.txt, NOT a copied list. The copied list is how the
