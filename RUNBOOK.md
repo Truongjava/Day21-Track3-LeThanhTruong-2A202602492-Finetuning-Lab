@@ -136,17 +136,21 @@ Kèm bảng `results/` và `runs.csv`. **WARN thì đọc**, nhất là:
 
 ---
 
-## 7. Tải kết quả về
+## 7. Kết quả tự về máy
 
-**Ô 4 tự đóng gói và tải xuống rồi** — bạn không phải làm gì thêm. Nó zip `results/` +
-`adapters/correct` thành `lab21_2A202602492.zip` rồi gọi `files.download()`.
+**Không cần làm gì.** Ô 3 đóng gói `results/` + `adapters/correct` thành
+`lab21_2A202602492.zip` rồi tự gọi `files.download()` — trong `finally`, nên **chạy dù
+pipeline thành công hay đứt giữa chừng**.
+
+Ô 4 gọi lại lần nữa (sau `verify.py`), hữu ích khi bạn muốn bản mới hơn hoặc lần tải
+trước bị trình duyệt chặn.
 
 Nếu trình duyệt chặn popup: mở ngăn file bên trái trong Colab (biểu tượng thư mục) →
-tải `lab21_2A202602492.zip` bằng tay.
+tải `lab21_2A202602492.zip` bằng tay, hoặc chạy riêng `!python scripts/pack_results.py`.
 
 > **Đây là bước dễ mất cả buổi nhất.** Colab thu hồi máy ảo khi phiên kết thúc, và
 > `results/` chính là thứ grader dùng để kiểm chéo mọi con số trong REPORT.md. Một lần
-> chạy 66 phút đã mất trắng vì bước này bị bỏ qua. Vì thế nó nằm *trong* ô 4.
+> chạy 66 phút đã mất trắng vì bước này bị bỏ qua — nên giờ nó nằm trong `finally`.
 
 **Đừng** zip cả thư mục `adapters/`: bản `adapters/merged` của NB6 nặng ~9,3 GB.
 
