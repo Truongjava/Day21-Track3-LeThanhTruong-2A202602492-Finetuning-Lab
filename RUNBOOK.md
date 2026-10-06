@@ -138,20 +138,17 @@ Kèm bảng `results/` và `runs.csv`. **WARN thì đọc**, nhất là:
 
 ## 7. Tải kết quả về
 
-Colab sẽ xoá máy ảo. **Tải về trước khi đóng tab.** Cần 3 thứ:
+**Ô 4 tự đóng gói và tải xuống rồi** — bạn không phải làm gì thêm. Nó zip `results/` +
+`adapters/correct` thành `lab21_2A202602492.zip` rồi gọi `files.download()`.
 
-```python
-# dán vào một ô mới
-!zip -qr lab21_2A202602492.zip results/ adapters/correct
-from google.colab import files
-files.download("lab21_2A202602492.zip")
-```
+Nếu trình duyệt chặn popup: mở ngăn file bên trái trong Colab (biểu tượng thư mục) →
+tải `lab21_2A202602492.zip` bằng tay.
 
-Thêm adapter đối chứng nếu muốn giữ (`attn_only`, `wrong_lr`, `qlora`) — **đừng** zip cả
-thư mục `adapters/`: bản `adapters/merged` của NB6 nặng ~9,3 GB.
+> **Đây là bước dễ mất cả buổi nhất.** Colab thu hồi máy ảo khi phiên kết thúc, và
+> `results/` chính là thứ grader dùng để kiểm chéo mọi con số trong REPORT.md. Một lần
+> chạy 66 phút đã mất trắng vì bước này bị bỏ qua. Vì thế nó nằm *trong* ô 4.
 
-Nếu file quá lớn, tối thiểu phải có **`results/`** — đó là thứ grader dùng để kiểm chéo
-mọi con số trong report. Adapter nộp kèm chỉ cần `adapters/correct/`.
+**Đừng** zip cả thư mục `adapters/`: bản `adapters/merged` của NB6 nặng ~9,3 GB.
 
 Sau khi tải về, giải nén vào đúng thư mục repo (đè `results/` và `adapters/`), rồi
 chạy lại `make verify` ở máy để chắc chắn.
