@@ -1,0 +1,9 @@
+# Checksums in data/checksums.json are sha256 over the exact bytes, and verify.py FAILs
+# when they drift. With the Windows default `core.autocrlf=true`, git rewrites LF to CRLF
+# on checkout, every data hash changes, and `make verify` reports "eval sets unmodified:
+# FAIL" on a tree nobody has touched -- which is exactly the alarm this file exists to
+# raise, crying wolf. Pin these to LF so the recorded hashes hold on every platform.
+#
+# Ceiling: only the corpus is pinned. If verify.py is ever extended to hash another
+# text file, add it here too.
+data/*.jsonl text eol=lf
