@@ -107,6 +107,18 @@ STAGES = "nb4 nb5 nb6"     # ví dụ: đứt ở NB4
 Chạy lại cả `nb4` cũng an toàn — nó skip những adapter đã train xong. Muốn train lại
 từ đầu: xoá `adapters/<key>/` hoặc đặt `FORCE_RETRAIN=1`.
 
+### NB6 báo `ValueError: We need an offload_dir to dispatch this model`
+
+Đã sửa. Nguyên nhân: `del merged` ở cuối §2 không giải phóng được gì, vì `PeftModel`
+trong biến `model` vẫn giữ tham chiếu tới đúng model đó — nên 9,3 GB vẫn nằm trên GPU.
+Sang §3 nạp thêm bản thứ hai, tổng vượt 14,6 GB, và `device_map="auto"` **âm thầm** đẩy
+các lớp cuối xuống CPU thay vì báo lỗi. Chính `load_adapter` của PEFT mới là chỗ ném
+lỗi, muộn hơn một nhịp, với thông báo nói về `offload_dir` — sai hoàn toàn so với
+nguyên nhân thật.
+
+Nếu vẫn gặp: `Runtime → Restart session` (giữ nguyên `/content`), chạy lại ô 1 rồi ô 3
+với `STAGES = "nb6"`. Bản merged đã lưu sẽ được bỏ qua, không tốn lại ~16 phút.
+
 ---
 
 ## 6. Ô 4 — Gatekeeper

@@ -65,11 +65,26 @@ assert delta >= -TOL, (
 )
 
 out = ROOT / "adapters" / "merged"
-merged.save_pretrained(out); tok.save_pretrained(out)
+# ~9.3 GB and, on a free-Colab disk with ~12 GB of RAM, about 16 minutes to write.
+# Re-running this notebook must not pay that again: the merged checkpoint is never
+# loaded later in the lab, so an existing one is already the answer.
+if any(out.glob("*.safetensors")):
+    print(f"skip save: {out} đã có trọng số (~16 phút trên Colab free)")
+else:
+    merged.save_pretrained(out); tok.save_pretrained(out)
 report.write_json({"before_merge": before, "after_merge": after, "delta": delta,
                    "tolerance": TOL, "n": len(target)},
                   "merge_check.json", results_dir=ROOT / "results")
-del merged; generate.free_memory()
+
+# `del merged` is NOT enough and used to crash section 3 with "We need an offload_dir".
+# `merge_and_unload()` returns the raw transformer, but the PeftModel in `model` still
+# holds it as `model.base_model.model` -- so `merged` stays alive and the 9.3 GB never
+# leaves the GPU. Section 3 then loads a second copy, the two together exceed the T4's
+# 14.6 GB, and `device_map="auto"` silently offloads the tail layers to CPU instead of
+# failing. It is PEFT's `load_adapter` that raises, one call later, with a message about
+# `offload_dir` that names the wrong problem entirely. Drop BOTH references.
+del model, merged
+generate.free_memory()
 
 # %% [markdown]
 # ## 3. Một base, nhiều adapter — hoán đổi theo request
