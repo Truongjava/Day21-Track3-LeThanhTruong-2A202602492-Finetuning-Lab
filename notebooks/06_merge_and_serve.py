@@ -64,17 +64,30 @@ assert delta >= -TOL, (
     "với DoRA cần PEFT ≥ 0.10 để gộp đúng vector magnitude (deck §18)."
 )
 
-out = ROOT / "adapters" / "merged"
-# ~9.3 GB and, on a free-Colab disk with ~12 GB of RAM, about 16 minutes to write.
-# Re-running this notebook must not pay that again: the merged checkpoint is never
-# loaded later in the lab, so an existing one is already the answer.
-if any(out.glob("*.safetensors")):
-    print(f"skip save: {out} đã có trọng số (~16 phút trên Colab free)")
-else:
-    merged.save_pretrained(out); tok.save_pretrained(out)
+# Ghi artefact ĐƯỢC CHẤM trước, rồi mới tới phần lưu trọng số. Bản merged nặng 9,3 GB
+# và tốn ~16 phút trên Colab free; nếu tiến trình chết giữa chừng thì thứ rubric cần
+# (`merge_check.json`) đã nằm an toàn trên đĩa rồi.
 report.write_json({"before_merge": before, "after_merge": after, "delta": delta,
                    "tolerance": TOL, "n": len(target)},
                   "merge_check.json", results_dir=ROOT / "results")
+print("-> ghi results/merge_check.json xong")
+
+out = ROOT / "adapters" / "merged"
+# Lưu trọng số merged là TUỲ CHỌN: rubric B1 chỉ cần `merge_check.json` + hot-swap, và
+# bản merged không được nạp lại ở đâu trong lab cũng không nằm trong bài nộp. Đặt
+# SKIP_MERGE_SAVE=1 để bỏ qua và tiết kiệm ~16 phút.
+SKIP_SAVE = os.environ.get("SKIP_MERGE_SAVE", "").lower() in {"1", "true", "yes"}
+if SKIP_SAVE:
+    print("bỏ qua lưu trọng số merged (SKIP_MERGE_SAVE=1)")
+elif any(out.glob("*.safetensors")):
+    print(f"skip save: {out} đã có trọng số")
+else:
+    import time as _t
+    print(f"đang ghi {out} — ~9,3 GB, khoảng 16 phút trên Colab free. "
+          "Đây là bước lâu nhất và im lặng nhất của cả lab; nó KHÔNG treo.", flush=True)
+    _t0 = _t.perf_counter()
+    merged.save_pretrained(out); tok.save_pretrained(out)
+    print(f"-> ghi xong sau {_t.perf_counter() - _t0:.0f}s", flush=True)
 
 # `del merged` is NOT enough and used to crash section 3 with "We need an offload_dir".
 # `merge_and_unload()` returns the raw transformer, but the PeftModel in `model` still
