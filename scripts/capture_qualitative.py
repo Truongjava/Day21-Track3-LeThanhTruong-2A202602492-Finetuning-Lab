@@ -33,10 +33,15 @@ def load_jsonl(p: pathlib.Path) -> list[dict]:
         return [json.loads(line) for line in fh if line.strip()]
 
 
-def sweep(model, tok, target, regression, label):
-    """Both eval groups for one model. Returns (target_preds, regression_preds)."""
+def sweep(model, tok, target, regression, label, prompt):
+    """Both eval groups for one model. Returns (target_preds, regression_preds).
+
+    `prompt` is a parameter and NOT a constant: (b) is the base model with the OPTIMIZED
+    prompt, (c) is the fine-tune with the NAIVE one. Hardcoding either here silently
+    produces a baseline that is not the baseline -- the mistake this lab calls F-31.
+    """
     tpreds, _ = generate.generate_batch(
-        model, tok, [r["input"] for r in target], system=generate.NAIVE_PROMPT,
+        model, tok, [r["input"] for r in target], system=prompt,
         label=f"{label}/target")
     rpreds, _ = generate.generate_batch(
         model, tok, [r["instruction"] for r in regression], system=None, max_new_tokens=96,
@@ -51,22 +56,26 @@ def main() -> int:
     print(f"tier={tier.name}  target={len(target)}  regression={len(regression)}")
 
     # --- (b) base + optimized prompt -----------------------------------------
+    # OPTIMIZED_PROMPT, matching NB2's baseline_b. Using NAIVE_PROMPT here would
+    # reproduce baseline (a) instead, and (a) scores target=0.000 -- the whole
+    # comparison below would then read as an enormous fine-tune win.
     print("\n=== (b) base + optimized prompt ===")
     model, tok = generate.load_base(tier)
-    b_t, b_r = sweep(model, tok, target, regression, "b")
+    b_t, b_r = sweep(model, tok, target, regression, "b", generate.OPTIMIZED_PROMPT)
     del model
     generate.free_memory()
 
     # --- (c) base + the trained adapter --------------------------------------
-    # Scored the way NB5 scores it: the NAIVE prompt, because the behaviour is supposed
-    # to have moved into the weights.
+    # NAIVE_PROMPT, matching NB5: the behaviour is supposed to have moved into the
+    # weights, so the prompt shrinks. Changing this to OPTIMIZED_PROMPT would make the
+    # fine-tune win for a reason it was not trained for.
     print("\n=== (c) LoRA fine-tune ===")
     from peft import PeftModel
 
     model, tok = generate.load_base(tier)
     model = PeftModel.from_pretrained(model, str(ROOT / "adapters" / "correct"))
     model.eval()
-    c_t, c_r = sweep(model, tok, target, regression, "c")
+    c_t, c_r = sweep(model, tok, target, regression, "c", generate.NAIVE_PROMPT)
     del model
     generate.free_memory()
 
@@ -104,11 +113,31 @@ def main() -> int:
 
     losses = [r for r in rows if r["ft_loses"]]
     reg_losses = [r for r in reg_rows if r["ft_loses"]]
+    b_mean = round(sum(r["b_score"] for r in rows) / len(rows), 4)
+    c_mean = round(sum(r["c_score"] for r in rows) / len(rows), 4)
+
+    # Self-check against the frozen baseline. (b) with the OPTIMIZED prompt scored 0.765
+    # on the full target set; (a) with the NAIVE one scored 0.000. If this sweep produced
+    # something near zero, it used the wrong prompt and every "fine-tune wins" row below
+    # is an artefact. Generation is greedy, so the means should agree to a hair.
+    frozen_path = ROOT / "results" / "baselines_frozen.json"
+    if frozen_path.exists():
+        frozen = json.loads(frozen_path.read_text(encoding="utf-8"))
+        want = frozen["baseline_b"]["target"]
+        gap = abs(b_mean - want)
+        print(f"\nself-check: (b) target mean {b_mean:.4f} vs frozen {want:.4f} "
+              f"(diff {gap:.4f})")
+        if gap > 0.02:
+            print("  !! (b) does NOT reproduce the frozen baseline. Either the prompt is "
+                  "wrong (NAIVE instead of OPTIMIZED reproduces baseline (a), target "
+                  "0.000) or the model/precision differ. Do not trust the table below.")
+            return 1
+
     out = {
         "n_target": len(rows),
         "n_regression": len(reg_rows),
-        "b_target_mean": round(sum(r["b_score"] for r in rows) / len(rows), 4),
-        "c_target_mean": round(sum(r["c_score"] for r in rows) / len(rows), 4),
+        "b_target_mean": b_mean,
+        "c_target_mean": c_mean,
         "n_ft_loses_target": len(losses),
         "n_ft_loses_regression": len(reg_losses),
         "target": rows,
@@ -122,7 +151,6 @@ def main() -> int:
     print(f"fine-tune LOSES on {len(reg_losses)}/{len(reg_rows)} regression examples")
     print("-> results/qualitative_full.json")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
