@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -139,6 +140,19 @@ def full() -> None:
                   "conclusion plus a ≥100-word verdict reading")
         else:
             check("REPORT.md filled in", OK, f"~{len(text.split())} words")
+
+        # A report that cites an artifact which does not exist is F-21's shape -- a
+        # document naming a file nobody created -- applied to the one document the grader
+        # reads. This check exists because `verify` once printed "Ready to submit" for a
+        # report whose qualitative section pointed at a results/qualitative_full.json
+        # that had never been generated: no placeholders, plenty of words, and an empty
+        # rubric section. Word counts cannot see that.
+        cited = set(re.findall(r"results/([A-Za-z0-9_.-]+\.(?:json|csv))", text))
+        missing = sorted(f for f in cited if not (ROOT / "results" / f).exists())
+        check("REPORT.md cites only existing artifacts",
+              OK if not missing else FAIL,
+              f"{len(cited)} referenced" if not missing
+              else f"references {missing} — write it, or drop the reference")
 
     # --- NB1 integrity ---
     proof = _load_json(ROOT / "results" / "mask_proof.json")
