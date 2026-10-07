@@ -27,6 +27,13 @@ wandb/
 .cache/
 hf_cache/
 
+# The submission itself: unpacked `lab21_<MSSV>.zip`. Holds the trained adapter
+# (adapter_model.safetensors is ~124 MB, past GitHub's 100 MB per-file ceiling) and it
+# is assembled from results/ + adapters/, both ignored above. Zip it to hand in; it is
+# not source, and a push that includes it is rejected by the remote.
+lab21_*/
+*.zip
+
 # Secrets
 .env
 .env.local
