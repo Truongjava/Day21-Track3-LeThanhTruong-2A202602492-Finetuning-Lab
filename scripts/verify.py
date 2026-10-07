@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -87,6 +88,19 @@ def smoke() -> None:
          if ("passed" in l or "failed" in l or "error" in l) and not set(l) <= set(". %[]0123456789")),
         lines[-1] if lines else f"exit {proc.returncode}",
     )
+    # `--tb=no -rN` keeps this output compact, but it also throws away the test names --
+    # so a failing suite reported "3 failed, 115 passed" and nothing else, and the only
+    # way to learn which three was to re-run pytest by hand. A gatekeeper that says
+    # "something failed" is the class of silent failure this lab is built to catch.
+    # On failure, re-run the short summary so the names reach the student.
+    if proc.returncode != 0 and not os.environ.get("VERIFY_QUIET"):
+        names = subprocess.run(
+            [sys.executable, "-m", "pytest", str(ROOT / "tests"), "--tb=no", "-rf", "-q"],
+            capture_output=True, text=True, cwd=ROOT)
+        failed = [l for l in (names.stdout or "").splitlines()
+                  if l.startswith("FAILED") or l.startswith("ERROR")]
+        for line in failed:
+            check("  " + line.split(" - ")[0].replace("FAILED ", "failing: "), FAIL)
     check("unit tests", OK if proc.returncode == 0 else FAIL, summary)
 
 
