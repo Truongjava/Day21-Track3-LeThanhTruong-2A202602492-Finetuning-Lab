@@ -106,12 +106,22 @@ def test_small_regression_inside_tolerance_still_passes():
 
 # --- F-30: mask modes announce themselves when they cannot do anything -------
 
+# `from fake_tokenizer import ...`, NOT `from tests.fake_tokenizer import ...`.
+# `tests/` has no __init__.py, so it is a NAMESPACE package, and PEP 420 lets a regular
+# package of the same name anywhere later on sys.path win outright. Colab's
+# site-packages ships one, so the prefixed form raised
+#
+#     ModuleNotFoundError: No module named 'tests.fake_tokenizer'
+#
+# for these three tests while the rest of the suite passed. The bare form works because
+# pyproject.toml puts tests/ on sys.path via `pythonpath = ["src", "tests"]` -- which is
+# what test_masking.py and test_repo_structure.py already rely on.
 def test_reasoningless_corpus_warns_for_think_modes():
     """The shipped corpus is 250 bare-JSON answers, and the generation prompt already
     closes an empty <think></think>, so `masked-think` and `response-only` are
     byte-identical to `assistant-only` there. Silent no-ops are what this lab is about."""
     from labkit import data
-    from tests.fake_tokenizer import FakeTokenizer
+    from fake_tokenizer import FakeTokenizer
 
     records = [{"instruction": "i", "input": "x", "output": '{"a": 1}'}]
     with pytest.warns(RuntimeWarning, match="no-op on this corpus"):
@@ -121,7 +131,7 @@ def test_reasoningless_corpus_warns_for_think_modes():
 
 def test_no_warning_when_the_corpus_has_traces():
     from labkit import data
-    from tests.fake_tokenizer import FakeTokenizer
+    from fake_tokenizer import FakeTokenizer
 
     records = [{"instruction": "i", "input": "x",
                 "output": '<think>vi sao</think>\n{"a": 1}'}]
@@ -134,7 +144,7 @@ def test_no_warning_when_the_corpus_has_traces():
 def test_assistant_only_never_warns():
     """The default mode is not affected by any of this."""
     from labkit import data
-    from tests.fake_tokenizer import FakeTokenizer
+    from fake_tokenizer import FakeTokenizer
 
     records = [{"instruction": "i", "input": "x", "output": '{"a": 1}'}]
     with warnings.catch_warnings():
